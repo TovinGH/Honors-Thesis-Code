@@ -1,0 +1,173 @@
+---
+title: "Honors-Thesis-Code"
+output: html_document
+date: "2025-04-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Code}
+library(car)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+
+data1<-read.csv("Plant growth data - plant growth data master.csv")
+#data cleaning
+data1 %>% drop_na(plant_height)
+
+
+#reformat data for computer
+data1$date <- format(as.Date(data1$date, format = "%m/%d/%Y"), "%Y-%m-%d")
+
+#DATA VISUALIZATION
+
+
+
+#boxplots
+data2<- filter(data1, date== "2025-03-12")
+
+boxplot(plant_height~insect_damage, data=data2)
+boxplot(shoot_fresh_weight~insect_damage, data=data2)
+boxplot(yield~treatment, data=data2)
+boxplot(dry_shoot_weight~treatment, data2)
+#turn binary data into factor
+data1$treatment <- factor(data1$treatment, levels = c("control", "70mM"))
+data1$insect_damage <- factor(data1$insect_damage, levels = c("yes", "no"))
+
+#filter out 250mM plants since they all died
+data1<-filter(data1, treatment != "250mM")
+
+#LOOK AT RELATIONSHIP BETWEEN VARIABLES
+
+# Scatterplot of plant_height vs. yield
+ggplot(data1, aes(x = plant_height, y = yield)) +
+  geom_point(color = "blue") + 
+  labs(title = "Scatterplot of Plant Height vs. Yield",
+       x = "Plant Height", 
+       y = "Yield") +
+  theme_minimal()
+#plant height and yield do not appear to be related
+
+# Scatterplot of number of true leaves vs. yield
+ggplot(data1, aes(x = number_of_true_leaves, y = yield)) +
+  geom_point(color = "blue") + 
+  labs(title = "Scatterplot of number of true leaves vs. Yield",
+       x = "number of true leaves", 
+       y = "Yield") +
+  theme_minimal()
+#no clear relationship between number of true leaves and yield
+
+# Scatterplot of shoot fresh weight vs. yield
+ggplot(data1, aes(x = shoot_fresh_weight, y = yield)) +
+  geom_point(color = "blue") + 
+  labs(title = "Scatterplot of shoot fresh weight vs. Yield",
+       x = "shoot fresh weight", 
+       y = "Yield") +
+  theme_minimal()
+#there is a clear relationship between shoot fresh weight and yield
+# as shoot fresh weight goes up, yield goes down 
+
+# Scatterplot of number of true leaves vs. shoot fresh weight
+ggplot(data1, aes(x = number_of_true_leaves, y = shoot_fresh_weight)) +
+  geom_point(color = "blue") + 
+  labs(title = "Scatterplot of number of true leaves vs. shoot fresh weight",
+       x = "number of true leaves", 
+       y = "shoot fresh weight") +
+  theme_minimal()
+#no clear relationship between number of true leaves and shoot fresh weight
+
+# Scatterplot of plant height vs. shoot fresh weight
+ggplot(data1, aes(x = plant_height, y = shoot_fresh_weight)) +
+  geom_point(color = "blue") + 
+  labs(title = "Scatterplot of plant height vs. shoot fresh weight",
+       x = "plant height", 
+       y = "shoot fresh weight") +
+  theme_minimal()
+#no clear relationship between plant height and shoot fresh weight
+
+# Scatterplot of number of true leaves vs. plant height
+ggplot(data1, aes(x = number_of_true_leaves, y = plant_height)) +
+  geom_point(color = "blue") + 
+  labs(title = "Scatterplot of number of true leaves vs. plant height",
+       x = "number of true leaves", 
+       y = "plant height") +
+  theme_minimal()
+#number of true leaves and plant height have a clear logarithmic relationship
+#height~log(true leaves)
+
+
+
+#we will use Mann-Whitney U Wilcox test
+
+summary(wilcox.test(yield~treatment, data = data1))
+
+
+
+print("look at data")
+data_unhurt<-filter(data1)
+wilcox.test(yield~treatment, data = filter(data_unhurt, date == "2025-03-12" & yield != 0))
+
+
+#plant height data visualization
+data_summary <- data_unhurt %>%
+  group_by(treatment, date) %>%
+  summarise(
+    avg_plant_height = mean(plant_height, na.rm = TRUE),
+    sd_plant_height = sd(plant_height, na.rm = TRUE)  # Calculate standard deviation
+  )
+
+
+
+# Plot the average plant height with shaded region for standard deviation
+ggplot(data_summary, aes(x = as.Date(date), y = avg_plant_height, color = treatment, group = treatment)) +
+  geom_line() +  # Add line for average plant height
+  geom_point() +  # Add points for each data point
+  geom_ribbon(aes(ymin = avg_plant_height - sd_plant_height, ymax = avg_plant_height + sd_plant_height), 
+              alpha = 0.2) +  # Add shaded region for standard deviation
+  labs(title = "Average Plant Height with Standard Deviation Over Time by Treatment",
+       x = "Date",
+       y = "Average Plant Height") +
+  theme_minimal()
+
+
+
+#check if variance similar
+boxplot(yield~treatment, data=filter(data_unhurt, date =="2025-03-12" ), main = "Yield vs Treatment Boxplot")
+ggplot(filter(filter(data_unhurt, date =="2025-03-12" ), treatment=="control"), aes(x=yield)) + geom_histogram() + ggtitle("Yield for Control Plants")
+ggplot(filter(filter(data_unhurt, date =="2025-03-12" ), treatment=="70mM"), aes(x=yield)) + geom_histogram()+ ggtitle("Yield for 70mM Solution Plants")
+#distributions differ for all variables
+
+#visualize plant height
+boxplot(plant_height~treatment, data=filter(data_unhurt, date=="2025-03-12"), main="Plant Height vs Treatment")
+
+# Plot the number of true leaves with shaded region for standard deviation
+data_summary2 <- data_unhurt %>%
+  group_by(treatment, date) %>%
+  summarise(
+    avg_number_of_true_leaves = mean(number_of_true_leaves, na.rm = TRUE),
+    sd_number_of_true_leaves = sd(number_of_true_leaves, na.rm = TRUE)  # Calculate standard deviation
+  )
+
+ggplot(data_summary2, aes(x = as.Date(date), y = avg_number_of_true_leaves, color = treatment, group = treatment)) +
+  geom_line() +  # Add line for average plant height
+  geom_point() +  # Add points for each data point
+  geom_ribbon(aes(ymin = avg_number_of_true_leaves - sd_number_of_true_leaves, ymax = avg_number_of_true_leaves + sd_number_of_true_leaves), 
+              alpha = 0.2) +  # Add shaded region for standard deviation
+  labs(title = "Avg. Number of True Leaves with Standard Deviation Over Time by Treatment",
+       x = "Date",
+       y = "Average number of true leaves") +
+  theme_minimal()
+
+#now analyze how treatment affects leaf production. 
+boxplot(dry_shoot_weight~treatment, filter(data_unhurt, date =="2025-03-12" ))
+#looking at the boxplots, the dry weight is reduced by 70mM treatment
+
+#let's check if fresh weight behaves the same way
+boxplot(shoot_fresh_weight~treatment, filter(data_unhurt, date =="2025-03-12" ))
+
+filter(data1, date == "2025-03-12" & yield != 0)
+```
