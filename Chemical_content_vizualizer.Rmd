@@ -1,5 +1,17 @@
 ---
 title: "Chemical_content_vizualizer"
 output: html_document
+library(ggplot2)
+data3<-read.csv("amaranth_chemical_data_forR.csv")
+ggplot(data3, aes(x = chemical, y = quantity, fill = treatment)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Barplot of Chemical Quantities by Treatment",
+    x = "Chemical",
+    y = "Quantity",
+    fill = "Treatment"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ---
 
